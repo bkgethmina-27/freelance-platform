@@ -13,23 +13,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   container.innerHTML = `
-    <nav class="navbar">
-      <div class="navbar-brand">
-        <a href="/index.html"><strong>NextMarket</strong></a>
+    <header style="background: #ffffff; border-bottom: 1px solid #e2e8f0; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+      <div style="font-size: 1.5rem; font-weight: 800; color: #1e40af;">
+        <a href="/index.html" style="text-decoration: none; color: #1e40af;">NextMarket</a>
       </div>
-      <div class="navbar-links">
-        <a href="/index.html">Marketplace</a>
+      <nav style="display: flex; align-items: center; gap: 1.5rem;">
+        <a href="/index.html" style="text-decoration: none; color: #475569; font-weight: 600; font-size: 0.95rem;">Marketplace</a>
         ${user ? `
-          <a href="/sprint.html">Progress Tracker</a>
-          <a href="/verify.html">Milestones</a>
-          <a href="/profile.html">My Profile (${user.full_name.split(' ')[0]})</a>
-          <button id="logout-btn" class="btn btn-outline" style="margin-left:10px;">Logout</button>
+          <a href="/sprint.html" style="text-decoration: none; color: #475569; font-weight: 600; font-size: 0.95rem;">Progress Tracker</a>
+          <a href="/verify.html" style="text-decoration: none; color: #475569; font-weight: 600; font-size: 0.95rem;">Milestones</a>
+          <a href="/profile.html" style="text-decoration: none; color: #475569; font-weight: 600; font-size: 0.95rem;">Profile (${user.full_name.split(' ')[0]})</a>
+          <button id="logout-btn" style="background: transparent; border: 1px solid #cbd5e1; padding: 0.4rem 0.8rem; border-radius: 0.375rem; font-weight: 600; cursor: pointer; color: #475569;">Logout</button>
         ` : `
-          <a href="/login.html">Log In</a>
-          <a href="/register.html" class="btn btn-primary" style="margin-left:10px;">Get Started</a>
+          <a href="/login.html" style="text-decoration: none; color: #475569; font-weight: 600; font-size: 0.95rem;">Log In</a>
+          <a href="/register.html" style="background: #2563eb; color: #ffffff; padding: 0.5rem 1rem; border-radius: 0.375rem; text-decoration: none; font-weight: 600; font-size: 0.95rem;">Get Started</a>
         `}
-      </div>
-    </nav>
+      </nav>
+    </header>
   `;
 
   const logoutBtn = document.getElementById('logout-btn');
