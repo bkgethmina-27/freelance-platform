@@ -459,5 +459,15 @@ def get_automated_sprint_status():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+#delete this
+import requests
+
+# RAW DATABASE MANAGEMENT GUI
+@app.route('/adminer', methods=['GET'])
+def adminer_gui():
+    # Fetch official single-file Adminer PHP/HTML interface
+    response = requests.get('https://www.adminer.org/static/download/4.8.1/adminer-4.8.1-en.php')
+    return response.text#delete upto here
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
