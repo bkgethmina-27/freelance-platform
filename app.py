@@ -1,27 +1,21 @@
+import os
 import secrets
 from flask import Flask, request, jsonify, send_from_directory, session
 from flask_cors import CORS
 import mysql.connector
-import os
 
 # Tier Minimum Pricing Thresholds
 TIER_MINIMUM_PRICES = {
-    1: 0.00,    # Tier 1 (Rising Talent): $0 floor allowed (Portfolio Builder)
+    1: 0.00,    # Tier 1 (Rising Talent): $0 floor allowed
     2: 25.00,   # Tier 2 (Verified Pro): Minimum $25 floor
     3: 75.00    # Tier 3 (Top Performer): Minimum $75 floor
 }
 
 app = Flask(__name__, static_folder='static')
-app.secret_key = 'super_secret_marketplace_key_change_in_production'  # Enables Flask sessions
-CORS(app, supports_credentials=True)  # Allows session cookies from frontend
+app.secret_key = os.getenv('SECRET_KEY', 'super_secret_marketplace_key_change_in_production')
+CORS(app, supports_credentials=True)
 
-# MariaDB / XAMPP Connection Configuration
-db_config = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': '',  # Default XAMPP MySQL password is empty
-    'database': 'freelance_db'
-}
+db_initialized = False
 
 def get_db_connection():
     host = os.getenv('DB_HOST', 'localhost')
@@ -30,8 +24,7 @@ def get_db_connection():
     database = os.getenv('DB_NAME', 'freelance_db')
     port = int(os.getenv('DB_PORT', 3306))
 
-    # Standard local connection vs Aiven SSL Cloud connection
-    if host == 'localhost' or host == '127.0.0.1':
+    if host in ['localhost', '127.0.0.1']:
         return mysql.connector.connect(
             host=host,
             user=user,
@@ -49,11 +42,68 @@ def get_db_connection():
             ssl_mode='REQUIRED'
         )
 
-@app.route('/', methods=['GET'])
-def home():
-    return jsonify({"message": "Python Flask + MariaDB Backend Running!"})
+@app.before_request
+def ensure_db_initialized():
+    global db_initialized
+    if not db_initialized:
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                full_name VARCHAR(100) NOT NULL,
+                email VARCHAR(100) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                role ENUM('freelancer', 'client') DEFAULT 'freelancer',
+                current_tier INT DEFAULT 1,
+                average_rating DECIMAL(3,2) DEFAULT 0.00,
+                whatsapp_number VARCHAR(20),
+                bio TEXT,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            """)
+
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS freelancer_sprints (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                current_day INT DEFAULT 1,
+                day_1_done BOOLEAN DEFAULT FALSE,
+                day_2_done BOOLEAN DEFAULT FALSE,
+                day_3_done BOOLEAN DEFAULT FALSE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            """)
+
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS milestones (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                freelancer_id INT NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                verification_token VARCHAR(64) UNIQUE NOT NULL,
+                status ENUM('pending', 'verified') DEFAULT 'pending',
+                client_name VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (freelancer_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            """)
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+            db_initialized = True
+        except Exception as e:
+            print(f"Database initialization error: {e}")
 
 # Serve Static Frontend Web Pages
+@app.route('/', methods=['GET'])
+def home():
+    return send_from_directory('static', 'index.html')
+
 @app.route('/<path:path>')
 def serve_static(path):
     return send_from_directory('static', path)
@@ -75,26 +125,18 @@ def register():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        query = """
-            INSERT INTO users (full_name, email, password_hash, role, whatsapp_number)
-            VALUES (%s, %s, %s, %s, %s)
-        """
+        query = "INSERT INTO users (full_name, email, password_hash, role, whatsapp_number) VALUES (%s, %s, %s, %s, %s)"
         cursor.execute(query, (full_name, email, password, role, whatsapp_number))
         conn.commit()
-        
         user_id = cursor.lastrowid
         
-        # Automatically initialize the 14-day sprint for freelancers
         if role == 'freelancer':
-            sprint_query = "INSERT INTO freelancer_sprints (user_id) VALUES (%s)"
-            cursor.execute(sprint_query, (user_id,))
+            cursor.execute("INSERT INTO freelancer_sprints (user_id) VALUES (%s)", (user_id,))
             conn.commit()
 
         cursor.close()
         conn.close()
-
         return jsonify({"message": "User registered successfully!", "user_id": user_id}), 201
-
     except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 400
 
@@ -161,13 +203,7 @@ def get_freelancers():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     
-    query = """
-        SELECT id, full_name, bio, current_tier, average_rating, whatsapp_number 
-        FROM users 
-        WHERE role = 'freelancer' AND is_active = TRUE
-        ORDER BY current_tier DESC, average_rating DESC
-    """
-    cursor.execute(query)
+    cursor.execute("SELECT id, full_name, bio, current_tier, average_rating, whatsapp_number FROM users WHERE role = 'freelancer' AND is_active = TRUE ORDER BY current_tier DESC, average_rating DESC")
     freelancers = cursor.fetchall()
     
     cursor.close()
@@ -179,7 +215,7 @@ def get_freelancers():
 
     return jsonify(freelancers), 200
 
-# 6. Update Profile
+# 6. Update Profile (Requires Password Re-Verification)
 @app.route('/api/users/update', methods=['PUT'])
 def update_profile():
     user_id = session.get('user_id')
@@ -219,7 +255,7 @@ def update_profile():
     conn.close()
     return jsonify({"message": "Profile updated successfully!"}), 200
 
-# 7. Soft-Delete Account
+# 7. Soft-Delete Account (Requires Password Re-Verification)
 @app.route('/api/users/delete', methods=['DELETE'])
 def delete_profile():
     user_id = session.get('user_id')
@@ -278,14 +314,15 @@ def create_milestone():
     cursor.close()
     conn.close()
 
+    base_url = request.host_url.rstrip('/')
     return jsonify({
         "message": "Milestone created successfully!",
         "milestone_id": milestone_id,
         "verification_token": token,
-        "verification_url": f"http://127.0.0.1:5000/verify.html?token={token}"
+        "verification_url": f"{base_url}/verify.html?token={token}"
     }), 201
 
-# 9. Verify Milestone Token Route
+# 9. Verify Milestone Token Route (Auto Tier Promotion)
 @app.route('/api/milestones/verify/<token>', methods=['GET', 'POST'])
 def verify_milestone(token):
     conn = get_db_connection()
@@ -418,63 +455,6 @@ def get_sprint_progress():
         return jsonify({"error": "No active sprint found for user"}), 404
 
     return jsonify(sprint), 200
-
-def init_db():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            full_name VARCHAR(100) NOT NULL,
-            email VARCHAR(100) UNIQUE NOT NULL,
-            password_hash VARCHAR(255) NOT NULL,
-            role ENUM('freelancer', 'client') DEFAULT 'freelancer',
-            current_tier INT DEFAULT 1,
-            average_rating DECIMAL(3,2) DEFAULT 0.00,
-            whatsapp_number VARCHAR(20),
-            bio TEXT,
-            is_active BOOLEAN DEFAULT TRUE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        """)
-
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS freelancer_sprints (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id INT NOT NULL,
-            current_day INT DEFAULT 1,
-            day_1_done BOOLEAN DEFAULT FALSE,
-            day_2_done BOOLEAN DEFAULT FALSE,
-            day_3_done BOOLEAN DEFAULT FALSE,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-        """)
-
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS milestones (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            freelancer_id INT NOT NULL,
-            title VARCHAR(255) NOT NULL,
-            description TEXT,
-            verification_token VARCHAR(64) UNIQUE NOT NULL,
-            status ENUM('pending', 'verified') DEFAULT 'pending',
-            client_name VARCHAR(100),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (freelancer_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-        """)
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-        print("Database initialized successfully!")
-    except Exception as e:
-        print(f"Database init error: {e}")
-
-# Initialize schema when app starts
-init_db()
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
