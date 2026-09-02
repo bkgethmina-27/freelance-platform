@@ -10,7 +10,7 @@ TIER_MINIMUM_PRICES = {
     3: 75.00
 }
 
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.secret_key = os.getenv('SECRET_KEY', 'super_secret_marketplace_key_change_in_production')
 CORS(app, supports_credentials=True)
 
@@ -98,13 +98,17 @@ def ensure_db_initialized():
         except Exception:
             pass
 
+# Explicit Root & Static Page File Routes
 @app.route('/', methods=['GET'])
 def home():
     return send_from_directory('static', 'index.html')
 
-@app.route('/<path:path>')
-def serve_static(path):
-    return send_from_directory('static', path)
+@app.route('/<path:filename>')
+def serve_root_files(filename):
+    # If request is inside static folder or is an html page, serve directly from static directory
+    if os.path.exists(os.path.join(app.static_folder, filename)):
+        return send_from_directory(app.static_folder, filename)
+    return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/api/auth/register', methods=['POST'])
 def register():
