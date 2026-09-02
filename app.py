@@ -24,7 +24,7 @@ def get_db_connection():
     database = os.getenv('DB_NAME', 'freelance_db')
     port = int(os.getenv('DB_PORT', 3306))
 
-    # Local XAMPP/MariaDB setup vs. Cloud SSL Aiven setup
+    # Local XAMPP vs Cloud Aiven Connection
     if host in ['localhost', '127.0.0.1']:
         return mysql.connector.connect(
             host=host,
@@ -97,8 +97,9 @@ def ensure_db_initialized():
             cursor.close()
             conn.close()
             db_initialized = True
+            print("Successfully connected and initialized database tables.")
         except Exception as e:
-            print(f"Database initialization log: {e}")
+            print(f"DATABASE INITIALIZATION ERROR: {e}")
 
 # Static File Routing
 @app.route('/', methods=['GET'])
@@ -138,7 +139,8 @@ def register():
         cursor.close()
         conn.close()
         return jsonify({"message": "User registered successfully!", "user_id": user_id}), 201
-    except mysql.connector.Error as err:
+    except Exception as err:
+        print(f"Register error: {err}")
         return jsonify({"error": str(err)}), 400
 
 # 2. Login Endpoint
@@ -148,29 +150,31 @@ def login():
     email = data.get('email')
     password = data.get('password')
 
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM users WHERE email = %s AND is_active = TRUE", (email,))
-    user = cursor.fetchone()
-    cursor.close()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users WHERE email = %s AND is_active = TRUE", (email,))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
 
-    if user and user['password_hash'] == password:
-        session['user_id'] = user['id']
-        session['role'] = user['role']
-        return jsonify({
-            "message": "Login successful!",
-            "user": {
-                "id": user['id'],
-                "full_name": user['full_name'],
-                "email": user['email'],
-                "role": user['role'],
-                "whatsapp_number": user['whatsapp_number'],
-                "bio": user['bio']
-            }
-        }), 200
+        if user and user['password_hash'] == password:
+            session['user_id'] = user['id']
+            session['role'] = user['role']
+            return jsonify({
+                "message": "Login successful!",
+                "user": {
+                    "id": user['id'],
+                    "full_name": user['full_name'],
+                    "email": user['email'],
+                    "role": user['role']
+                }
+            }), 200
 
-    return jsonify({"error": "Invalid email or password"}), 401
+        return jsonify({"error": "Invalid email or password"}), 401
+    except Exception as e:
+        print(f"Login error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # 3. Active Session Endpoint
 @app.route('/api/auth/me', methods=['GET'])
@@ -179,18 +183,22 @@ def get_current_user():
     if not user_id:
         return jsonify({"error": "Not logged in"}), 401
 
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT id, full_name, email, role, whatsapp_number, bio, current_tier FROM users WHERE id = %s AND is_active = TRUE", (user_id,))
-    user = cursor.fetchone()
-    cursor.close()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, full_name, email, role, whatsapp_number, bio, current_tier FROM users WHERE id = %s AND is_active = TRUE", (user_id,))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
 
-    if not user:
-        session.clear()
-        return jsonify({"error": "User not found"}), 404
+        if not user:
+            session.clear()
+            return jsonify({"error": "User not found"}), 404
 
-    return jsonify(user), 200
+        return jsonify(user), 200
+    except Exception as e:
+        print(f"Me endpoint error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # 4. Logout Endpoint
 @app.route('/api/auth/logout', methods=['POST'])
@@ -201,22 +209,26 @@ def logout():
 # 5. Freelancer Marketplace List
 @app.route('/api/freelancers', methods=['GET'])
 def get_freelancers():
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    
-    cursor.execute("SELECT id, full_name, bio, current_tier, average_rating, whatsapp_number FROM users WHERE role = 'freelancer' AND is_active = TRUE ORDER BY current_tier DESC, average_rating DESC")
-    freelancers = cursor.fetchall()
-    
-    cursor.close()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("SELECT id, full_name, bio, current_tier, average_rating, whatsapp_number FROM users WHERE role = 'freelancer' AND is_active = TRUE ORDER BY current_tier DESC, average_rating DESC")
+        freelancers = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
 
-    for f in freelancers:
-        clean_number = "".join(filter(str.isdigit, f['whatsapp_number'] or ""))
-        f['whatsapp_link'] = f"https://wa.me/{clean_number}" if clean_number else None
+        for f in freelancers:
+            clean_number = "".join(filter(str.isdigit, f['whatsapp_number'] or ""))
+            f['whatsapp_link'] = f"https://wa.me/{clean_number}" if clean_number else None
 
-    return jsonify(freelancers), 200
+        return jsonify(freelancers), 200
+    except Exception as e:
+        print(f"FREELANCERS API ERROR: {e}")
+        return jsonify({"error": f"Database query failed: {str(e)}"}), 500
 
-# 6. Update Profile (Password Confirmation)
+# 6. Update Profile
 @app.route('/api/users/update', methods=['PUT'])
 def update_profile():
     user_id = session.get('user_id')
@@ -230,33 +242,36 @@ def update_profile():
     whatsapp_number = data.get('whatsapp_number')
 
     if not confirm_password:
-        return jsonify({"error": "Password confirmation required to apply changes."}), 400
+        return jsonify({"error": "Password confirmation required."}), 400
 
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    
-    cursor.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
-    user = cursor.fetchone()
-    if not user or user['password_hash'] != confirm_password:
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        if not user or user['password_hash'] != confirm_password:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Incorrect password."}), 403
+
+        update_query = """
+            UPDATE users 
+            SET full_name = COALESCE(%s, full_name),
+                bio = COALESCE(%s, bio),
+                whatsapp_number = COALESCE(%s, whatsapp_number)
+            WHERE id = %s
+        """
+        cursor.execute(update_query, (full_name, bio, whatsapp_number, user_id))
+        conn.commit()
+
         cursor.close()
         conn.close()
-        return jsonify({"error": "Incorrect password. Profile update rejected."}), 403
+        return jsonify({"message": "Profile updated successfully!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    update_query = """
-        UPDATE users 
-        SET full_name = COALESCE(%s, full_name),
-            bio = COALESCE(%s, bio),
-            whatsapp_number = COALESCE(%s, whatsapp_number)
-        WHERE id = %s
-    """
-    cursor.execute(update_query, (full_name, bio, whatsapp_number, user_id))
-    conn.commit()
-
-    cursor.close()
-    conn.close()
-    return jsonify({"message": "Profile updated successfully!"}), 200
-
-# 7. Soft Delete Profile (Password Confirmation)
+# 7. Soft Delete Profile
 @app.route('/api/users/delete', methods=['DELETE'])
 def delete_profile():
     user_id = session.get('user_id')
@@ -267,35 +282,37 @@ def delete_profile():
     confirm_password = data.get('password')
 
     if not confirm_password:
-        return jsonify({"error": "Password confirmation required to deactivate account."}), 400
+        return jsonify({"error": "Password confirmation required."}), 400
 
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
 
-    cursor.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
-    user = cursor.fetchone()
-    if not user or user['password_hash'] != confirm_password:
+        cursor.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        if not user or user['password_hash'] != confirm_password:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Incorrect password."}), 403
+
+        cursor.execute("UPDATE users SET is_active = FALSE WHERE id = %s", (user_id,))
+        conn.commit()
+
         cursor.close()
         conn.close()
-        return jsonify({"error": "Incorrect password. Account deletion aborted."}), 403
+        session.clear()
 
-    cursor.execute("UPDATE users SET is_active = FALSE WHERE id = %s", (user_id,))
-    conn.commit()
+        return jsonify({"message": "Account deactivated successfully."}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    cursor.close()
-    conn.close()
-    session.clear()
-
-    return jsonify({"message": "Account deactivated successfully."}), 200
-
-# 8. Milestone Creation Token Generation
+# 8. Milestone Creation
 @app.route('/api/milestones/create', methods=['POST'])
 def create_milestone():
     user_id = session.get('user_id')
     data = request.json
     freelancer_id = user_id or data.get('freelancer_id')
     title = data.get('title')
-    description = data.get('description', '')
     client_name = data.get('client_name', '')
 
     if not freelancer_id or not title:
@@ -303,72 +320,76 @@ def create_milestone():
 
     token = secrets.token_hex(16)
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    query = """
-        INSERT INTO milestones (freelancer_id, title, description, client_name, verification_token, status)
-        VALUES (%s, %s, %s, %s, %s, 'pending')
-    """
-    cursor.execute(query, (freelancer_id, title, description, client_name, token))
-    conn.commit()
-    milestone_id = cursor.lastrowid
-    cursor.close()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = """
+            INSERT INTO milestones (freelancer_id, title, client_name, verification_token, status)
+            VALUES (%s, %s, %s, %s, 'pending')
+        """
+        cursor.execute(query, (freelancer_id, title, client_name, token))
+        conn.commit()
+        milestone_id = cursor.lastrowid
+        cursor.close()
+        conn.close()
 
-    base_url = request.host_url.rstrip('/')
-    return jsonify({
-        "message": "Milestone created successfully!",
-        "milestone_id": milestone_id,
-        "verification_token": token,
-        "verification_url": f"{base_url}/verify.html?token={token}"
-    }), 201
+        base_url = request.host_url.rstrip('/')
+        return jsonify({
+            "message": "Milestone created successfully!",
+            "milestone_id": milestone_id,
+            "verification_token": token,
+            "verification_url": f"{base_url}/verify.html?token={token}"
+        }), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # 9. Verification & Tier Auto-Promotion
 @app.route('/api/milestones/verify/<token>', methods=['GET', 'POST'])
 def verify_milestone(token):
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
 
-    cursor.execute("SELECT * FROM milestones WHERE verification_token = %s", (token,))
-    milestone = cursor.fetchone()
+        cursor.execute("SELECT * FROM milestones WHERE verification_token = %s", (token,))
+        milestone = cursor.fetchone()
 
-    if not milestone:
+        if not milestone:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Invalid token"}), 404
+
+        if milestone['status'] == 'verified':
+            cursor.close()
+            conn.close()
+            return jsonify({"message": "Milestone already verified!"}), 200
+
+        cursor.execute("UPDATE milestones SET status = 'verified' WHERE verification_token = %s", (token,))
+        conn.commit()
+
+        freelancer_id = milestone['freelancer_id']
+        cursor.execute("SELECT COUNT(*) as verified_count FROM milestones WHERE freelancer_id = %s AND status = 'verified'", (freelancer_id,))
+        count_result = cursor.fetchone()
+        verified_count = count_result['verified_count']
+
+        new_tier = 1
+        if verified_count >= 15:
+            new_tier = 3
+        elif verified_count >= 4:
+            new_tier = 2
+
+        cursor.execute("UPDATE users SET current_tier = %s WHERE id = %s", (new_tier, freelancer_id))
+        conn.commit()
+
         cursor.close()
         conn.close()
-        return jsonify({"error": "Invalid or expired verification token"}), 404
 
-    if milestone['status'] == 'verified':
-        cursor.close()
-        conn.close()
-        return jsonify({"message": "Milestone is already verified!"}), 200
-
-    cursor.execute("UPDATE milestones SET status = 'verified' WHERE verification_token = %s", (token,))
-    conn.commit()
-
-    freelancer_id = milestone['freelancer_id']
-    cursor.execute("SELECT COUNT(*) as verified_count FROM milestones WHERE freelancer_id = %s AND status = 'verified'", (freelancer_id,))
-    count_result = cursor.fetchone()
-    verified_count = count_result['verified_count']
-
-    new_tier = 1
-    if verified_count >= 15:
-        new_tier = 3
-    elif verified_count >= 4:
-        new_tier = 2
-
-    cursor.execute("UPDATE users SET current_tier = %s WHERE id = %s", (new_tier, freelancer_id))
-    conn.commit()
-
-    cursor.close()
-    conn.close()
-
-    return jsonify({
-        "message": "Milestone verified successfully!",
-        "title": milestone['title'],
-        "client_name": milestone['client_name'],
-        "total_verified_milestones": verified_count,
-        "updated_tier": new_tier
-    }), 200
+        return jsonify({
+            "message": "Milestone verified!",
+            "total_verified_milestones": verified_count,
+            "updated_tier": new_tier
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # 10. Service Gig Creation & Price Floor Check
 @app.route('/api/gigs/create', methods=['POST'])
@@ -381,32 +402,33 @@ def create_gig():
     if not freelancer_id:
         return jsonify({"error": "User not authenticated"}), 401
 
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT current_tier FROM users WHERE id = %s", (freelancer_id,))
-    user = cursor.fetchone()
-    cursor.close()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT current_tier FROM users WHERE id = %s", (freelancer_id,))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
 
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+        if not user:
+            return jsonify({"error": "User not found"}), 404
 
-    user_tier = user['current_tier']
-    minimum_allowed = TIER_MINIMUM_PRICES.get(user_tier, 0.00)
+        user_tier = user['current_tier']
+        minimum_allowed = TIER_MINIMUM_PRICES.get(user_tier, 0.00)
 
-    if proposed_price < minimum_allowed:
+        if proposed_price < minimum_allowed:
+            return jsonify({
+                "error": "Price below tier threshold",
+                "message": f"Tier {user_tier} minimum rate is ${minimum_allowed:.2f}."
+            }), 400
+
         return jsonify({
-            "error": "Price below tier threshold",
-            "current_tier": user_tier,
-            "minimum_allowed_price": minimum_allowed,
-            "message": f"Tier {user_tier} freelancers must maintain a minimum rate of ${minimum_allowed:.2f}."
-        }), 400
-
-    return jsonify({
-        "message": "Gig price accepted and published!",
-        "tier": user_tier,
-        "price": proposed_price
-    }), 200
+            "message": "Gig price accepted!",
+            "tier": user_tier,
+            "price": proposed_price
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # 11. Complete Sprint Day
 @app.route('/api/sprints/complete-day', methods=['POST'])
@@ -419,24 +441,23 @@ def complete_sprint_day():
     day_number = data.get('day')
 
     if day_number not in [1, 2, 3]:
-        return jsonify({"error": "Invalid day number"}), 400
+        return jsonify({"error": "Invalid day"}), 400
 
-    column_name = f"day_{day_number}_done"
+    try:
+        column_name = f"day_{day_number}_done"
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        query = f"UPDATE freelancer_sprints SET {column_name} = TRUE, current_day = %s + 1 WHERE user_id = %s"
+        cursor.execute(query, (day_number, user_id))
+        conn.commit()
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    query = f"UPDATE freelancer_sprints SET {column_name} = TRUE, current_day = %s + 1 WHERE user_id = %s"
-    cursor.execute(query, (day_number, user_id))
-    conn.commit()
+        cursor.close()
+        conn.close()
 
-    cursor.close()
-    conn.close()
-
-    return jsonify({
-        "message": f"Day {day_number} marked as complete!",
-        "next_day": day_number + 1
-    }), 200
+        return jsonify({"message": f"Day {day_number} marked done!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # 12. Retrieve Sprint Status
 @app.route('/api/sprints/me', methods=['GET'])
@@ -445,17 +466,20 @@ def get_sprint_progress():
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
 
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM freelancer_sprints WHERE user_id = %s", (user_id,))
-    sprint = cursor.fetchone()
-    cursor.close()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM freelancer_sprints WHERE user_id = %s", (user_id,))
+        sprint = cursor.fetchone()
+        cursor.close()
+        conn.close()
 
-    if not sprint:
-        return jsonify({"error": "No active sprint found for user"}), 404
+        if not sprint:
+            return jsonify({"error": "Sprint not found"}), 404
 
-    return jsonify(sprint), 200
+        return jsonify(sprint), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
