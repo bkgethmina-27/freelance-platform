@@ -24,24 +24,30 @@ db_config = {
 }
 
 def get_db_connection():
-    # Fetch environment variables with production defaults
     host = os.getenv('DB_HOST', 'localhost')
     user = os.getenv('DB_USER', 'root')
     password = os.getenv('DB_PASSWORD', '')
     database = os.getenv('DB_NAME', 'freelance_db')
     port = int(os.getenv('DB_PORT', 3306))
 
-    # Aiven requires SSL mode when running in the cloud
-    ssl_disabled = True if host == 'localhost' else False
-
-    return mysql.connector.connect(
-        host=host,
-        user=user,
-        password=password,
-        database=database,
-        port=port,
-        ssl_disabled=ssl_disabled
-    )
+    # Standard local connection vs Aiven SSL Cloud connection
+    if host == 'localhost' or host == '127.0.0.1':
+        return mysql.connector.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=database,
+            port=port
+        )
+    else:
+        return mysql.connector.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=database,
+            port=port,
+            ssl_mode='REQUIRED'
+        )
 
 @app.route('/', methods=['GET'])
 def home():
@@ -412,6 +418,63 @@ def get_sprint_progress():
         return jsonify({"error": "No active sprint found for user"}), 404
 
     return jsonify(sprint), 200
+
+def init_db():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            full_name VARCHAR(100) NOT NULL,
+            email VARCHAR(100) UNIQUE NOT NULL,
+            password_hash VARCHAR(255) NOT NULL,
+            role ENUM('freelancer', 'client') DEFAULT 'freelancer',
+            current_tier INT DEFAULT 1,
+            average_rating DECIMAL(3,2) DEFAULT 0.00,
+            whatsapp_number VARCHAR(20),
+            bio TEXT,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS freelancer_sprints (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            current_day INT DEFAULT 1,
+            day_1_done BOOLEAN DEFAULT FALSE,
+            day_2_done BOOLEAN DEFAULT FALSE,
+            day_3_done BOOLEAN DEFAULT FALSE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        """)
+
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS milestones (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            freelancer_id INT NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            verification_token VARCHAR(64) UNIQUE NOT NULL,
+            status ENUM('pending', 'verified') DEFAULT 'pending',
+            client_name VARCHAR(100),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (freelancer_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        """)
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("Database initialized successfully!")
+    except Exception as e:
+        print(f"Database init error: {e}")
+
+# Initialize schema when app starts
+init_db()
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
