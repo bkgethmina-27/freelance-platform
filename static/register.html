@@ -1,81 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register | NextMarket</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register | NextMarket</title>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+  <div id="navbar-container"></div>
 
-    <div id="navbar-container"></div>
+  <div class="auth-container">
+    <h2>Join NextMarket</h2>
+    <p>Create your account to post services or hire talent instantly.</p>
+    
+    <div id="error-alert" class="alert alert-danger" style="display:none;"></div>
 
-    <main class="main-container">
-        <div class="form-card">
-            <h2>Join NextMarket</h2>
-            <p style="margin-bottom: 1.5rem; color: #64748b;">Create an account to start offering or hiring services.</p>
+    <form id="register-form">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="full_name" required placeholder="John Doe">
+      </div>
 
-            <form id="regForm">
-                <div class="form-group">
-                    <label for="full_name">Full Name</label>
-                    <input type="text" id="full_name" placeholder="John Doe" required>
-                </div>
-                <div class="form-group">
-                    <label for="email">Email Address</label>
-                    <input type="email" id="email" placeholder="john@example.com" required>
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" placeholder="••••••••" required>
-                </div>
-                <div class="form-group">
-                    <label for="whatsapp_number">WhatsApp Phone Number</label>
-                    <input type="text" id="whatsapp_number" placeholder="+94771234567">
-                </div>
-                <div class="form-group">
-                    <label for="role">Account Type</label>
-                    <select id="role">
-                        <option value="freelancer">Freelancer</option>
-                        <option value="client">Client</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn-submit">Complete Registration</button>
-            </form>
-            <p id="msg" style="margin-top: 1rem; font-weight: 600; text-align: center;"></p>
-        </div>
-    </main>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="email" required placeholder="john@example.com">
+      </div>
 
-    <footer class="footer">
-        <div class="footer-bottom">&copy; 2026 NextMarket Freelance Engine. All rights reserved.</div>
-    </footer>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" required placeholder="••••••••">
+      </div>
 
-    <script src="/static/navbar.js"></script>
-    <script>
-        document.getElementById('regForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const data = {
-                full_name: document.getElementById('full_name').value,
-                email: document.getElementById('email').value,
-                password: document.getElementById('password').value,
-                whatsapp_number: document.getElementById('whatsapp_number').value,
-                role: document.getElementById('role').value
-            };
+      <div class="form-group">
+        <label>WhatsApp Number</label>
+        <input type="text" id="whatsapp_number" placeholder="+1234567890">
+      </div>
 
-            const res = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            const result = await res.json();
-            if(res.ok) {
-                document.getElementById('msg').style.color = '#10b981';
-                document.getElementById('msg').innerText = "Registration successful! Redirecting to login...";
-                setTimeout(() => window.location.href = '/login.html', 1200);
-            } else {
-                document.getElementById('msg').style.color = '#ef4444';
-                document.getElementById('msg').innerText = "Error: " + result.error;
-            }
-        });
-    </script>
+      <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+    </form>
+
+    <p class="auth-footer">Already have an account? <a href="/login.html">Log In</a></p>
+  </div>
+
+  <script src="/static/navbar.js"></script>
+  <script>
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorAlert = document.getElementById('error-alert');
+      errorAlert.style.display = 'none';
+
+      const payload = {
+        full_name: document.getElementById('full_name').value,
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+        whatsapp_number: document.getElementById('whatsapp_number').value
+      };
+
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        window.location.href = '/login.html';
+      } else {
+        errorAlert.textContent = data.error || 'Registration failed';
+        errorAlert.style.display = 'block';
+      }
+    });
+  </script>
 </body>
 </html>
