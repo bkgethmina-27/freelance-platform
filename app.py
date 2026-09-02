@@ -24,6 +24,7 @@ def get_db_connection():
     database = os.getenv('DB_NAME', 'freelance_db')
     port = int(os.getenv('DB_PORT', 3306))
 
+    # Local XAMPP/MariaDB setup vs. Cloud SSL Aiven setup
     if host in ['localhost', '127.0.0.1']:
         return mysql.connector.connect(
             host=host,
@@ -97,9 +98,9 @@ def ensure_db_initialized():
             conn.close()
             db_initialized = True
         except Exception as e:
-            print(f"Database initialization error: {e}")
+            print(f"Database initialization log: {e}")
 
-# Serve Static Frontend Web Pages
+# Static File Routing
 @app.route('/', methods=['GET'])
 def home():
     return send_from_directory('static', 'index.html')
@@ -108,7 +109,7 @@ def home():
 def serve_static(path):
     return send_from_directory('static', path)
 
-# 1. Registration Route
+# 1. Registration Endpoint
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     data = request.json
@@ -140,7 +141,7 @@ def register():
     except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 400
 
-# 2. Login Route
+# 2. Login Endpoint
 @app.route('/api/auth/login', methods=['POST'])
 def login():
     data = request.json
@@ -171,7 +172,7 @@ def login():
 
     return jsonify({"error": "Invalid email or password"}), 401
 
-# 3. Get Current Session User
+# 3. Active Session Endpoint
 @app.route('/api/auth/me', methods=['GET'])
 def get_current_user():
     user_id = session.get('user_id')
@@ -191,13 +192,13 @@ def get_current_user():
 
     return jsonify(user), 200
 
-# 4. Logout Route
+# 4. Logout Endpoint
 @app.route('/api/auth/logout', methods=['POST'])
 def logout():
     session.clear()
     return jsonify({"message": "Logged out successfully"}), 200
 
-# 5. Marketplace Search Engine & Direct WhatsApp Route
+# 5. Freelancer Marketplace List
 @app.route('/api/freelancers', methods=['GET'])
 def get_freelancers():
     conn = get_db_connection()
@@ -215,7 +216,7 @@ def get_freelancers():
 
     return jsonify(freelancers), 200
 
-# 6. Update Profile (Requires Password Re-Verification)
+# 6. Update Profile (Password Confirmation)
 @app.route('/api/users/update', methods=['PUT'])
 def update_profile():
     user_id = session.get('user_id')
@@ -255,7 +256,7 @@ def update_profile():
     conn.close()
     return jsonify({"message": "Profile updated successfully!"}), 200
 
-# 7. Soft-Delete Account (Requires Password Re-Verification)
+# 7. Soft Delete Profile (Password Confirmation)
 @app.route('/api/users/delete', methods=['DELETE'])
 def delete_profile():
     user_id = session.get('user_id')
@@ -287,7 +288,7 @@ def delete_profile():
 
     return jsonify({"message": "Account deactivated successfully."}), 200
 
-# 8. Create Milestone Route
+# 8. Milestone Creation Token Generation
 @app.route('/api/milestones/create', methods=['POST'])
 def create_milestone():
     user_id = session.get('user_id')
@@ -322,7 +323,7 @@ def create_milestone():
         "verification_url": f"{base_url}/verify.html?token={token}"
     }), 201
 
-# 9. Verify Milestone Token Route (Auto Tier Promotion)
+# 9. Verification & Tier Auto-Promotion
 @app.route('/api/milestones/verify/<token>', methods=['GET', 'POST'])
 def verify_milestone(token):
     conn = get_db_connection()
@@ -369,7 +370,7 @@ def verify_milestone(token):
         "updated_tier": new_tier
     }), 200
 
-# 10. Create Gig Route (Tier Floor Pricing Validation)
+# 10. Service Gig Creation & Price Floor Check
 @app.route('/api/gigs/create', methods=['POST'])
 def create_gig():
     user_id = session.get('user_id')
@@ -407,7 +408,7 @@ def create_gig():
         "price": proposed_price
     }), 200
 
-# 11. Complete Onboarding Sprint Day Route
+# 11. Complete Sprint Day
 @app.route('/api/sprints/complete-day', methods=['POST'])
 def complete_sprint_day():
     user_id = session.get('user_id')
@@ -437,7 +438,7 @@ def complete_sprint_day():
         "next_day": day_number + 1
     }), 200
 
-# 12. Get Sprint Progress
+# 12. Retrieve Sprint Status
 @app.route('/api/sprints/me', methods=['GET'])
 def get_sprint_progress():
     user_id = session.get('user_id')
