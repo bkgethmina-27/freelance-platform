@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marketplace | NextMarket</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div id="navbar-container"></div>
+
+    <main class="main-container">
+        <div style="text-align: center; margin-bottom: 2.5rem;">
+            <h1>Discover Vetted Freelance Talent</h1>
+            <p>Connect directly with top professionals across structured experience tiers.</p>
+        </div>
+
+        <div id="freelancerList" class="grid-3">
+            <p>Loading active freelancers...</p>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-bottom">&copy; 2026 NextMarket Freelance Engine. All rights reserved.</div>
+    </footer>
+
+    <script src="/static/navbar.js"></script>
+    <script>
+        async function loadFreelancers() {
+            try {
+                const res = await fetch('http://127.0.0.1:5000/api/freelancers');
+                const freelancers = await res.json();
+                
+                const listDiv = document.getElementById('freelancerList');
+                listDiv.innerHTML = '';
+
+                if(freelancers.length === 0) {
+                    listDiv.innerHTML = '<p>No freelancers registered yet.</p>';
+                    return;
+                }
+
+                freelancers.forEach(f => {
+                    listDiv.innerHTML += `
+                        <div class="card" style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:1.5rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                                <h3>${f.full_name}</h3>
+                                <span class="badge" style="background:#e0e7ff; color:#3730a3; padding:0.25rem 0.5rem; border-radius:12px; font-weight:700; font-size:0.75rem;">Tier ${f.current_tier}</span>
+                            </div>
+                            <p>${f.bio || 'Professional service provider.'}</p>
+                            <p style="margin-top:0.5rem;"><strong>Rating:</strong> ${f.average_rating} / 5.0</p>
+                            ${f.whatsapp_link ? `<a href="${f.whatsapp_link}" target="_blank" class="wa-btn">Contact on WhatsApp</a>` : ''}
+                        </div>
+                    `;
+                });
+            } catch(e) {
+                document.getElementById('freelancerList').innerHTML = '<p>Unable to connect to backend server.</p>';
+            }
+        }
+        loadFreelancers();
+    </script>
+</body>
+</html>

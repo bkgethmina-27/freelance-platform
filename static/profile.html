@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Settings | NextMarket</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div id="navbar-container"></div>
+
+    <main class="main-container">
+        <div class="form-card">
+            <h2>Account Settings</h2>
+            <p style="margin-bottom: 1.5rem; color: #64748b;" id="userWelcome">Loading profile...</p>
+
+            <form id="updateForm">
+                <div class="form-group">
+                    <label for="full_name">Full Name</label>
+                    <input type="text" id="full_name">
+                </div>
+                <div class="form-group">
+                    <label for="whatsapp_number">WhatsApp Number</label>
+                    <input type="text" id="whatsapp_number">
+                </div>
+                <div class="form-group">
+                    <label for="bio">Professional Bio</label>
+                    <input type="text" id="bio">
+                </div>
+                <div class="form-group" style="background: #f1f5f9; padding: 1rem; border-radius: 6px;">
+                    <label for="updatePassword" style="color: #0f172a;">Confirm Password to Save Edits</label>
+                    <input type="password" id="updatePassword" placeholder="Enter password" required>
+                </div>
+                <button type="submit" class="btn-submit">Save Changes</button>
+            </form>
+
+            <p id="msg" style="margin-top: 1rem; font-weight: 600; text-align: center;"></p>
+
+            <hr style="margin: 2rem 0 1.5rem 0; border: none; border-top: 1px solid #e2e8f0;">
+
+            <div style="background: #fef2f2; padding: 1rem; border-radius: 6px; border: 1px solid #fecaca;">
+                <h4 style="color: #991b1b; margin-bottom: 0.5rem;">Danger Zone</h4>
+                <p style="font-size: 0.85rem; color: #7f1d1d; margin-bottom: 1rem;">To permanently deactivate your account, enter your password below.</p>
+                <div class="form-group">
+                    <input type="password" id="deletePassword" placeholder="Enter password to confirm deactivation">
+                </div>
+                <button id="deleteBtn" style="background: #dc2626; color: white; border: none; padding: 0.6rem 1rem; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%;">Deactivate Account</button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-bottom">&copy; 2026 NextMarket Freelance Engine. All rights reserved.</div>
+    </footer>
+
+    <script src="/static/navbar.js"></script>
+    <script>
+        async function loadProfile() {
+            const res = await fetch('http://127.0.0.1:5000/api/auth/me');
+            if(!res.ok) {
+                window.location.href = '/login.html';
+                return;
+            }
+            const user = await res.json();
+            document.getElementById('userWelcome').innerText = `Logged in as ${user.email} (${user.role.toUpperCase()})`;
+            document.getElementById('full_name').value = user.full_name || '';
+            document.getElementById('whatsapp_number').value = user.whatsapp_number || '';
+            document.getElementById('bio').value = user.bio || '';
+        }
+
+        document.getElementById('updateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const password = document.getElementById('updatePassword').value;
+            
+            const res = await fetch('http://127.0.0.1:5000/api/users/update', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    password: password,
+                    full_name: document.getElementById('full_name').value,
+                    whatsapp_number: document.getElementById('whatsapp_number').value,
+                    bio: document.getElementById('bio').value
+                })
+            });
+            const data = await res.json();
+            const msg = document.getElementById('msg');
+            if(res.ok) {
+                msg.style.color = '#10b981';
+                msg.innerText = data.message;
+                document.getElementById('updatePassword').value = '';
+            } else {
+                msg.style.color = '#ef4444';
+                msg.innerText = data.error;
+            }
+        });
+
+        document.getElementById('deleteBtn').addEventListener('click', async () => {
+            const password = document.getElementById('deletePassword').value;
+            if(!password) { alert("Please enter your password to deactivate your account."); return; }
+
+            if(confirm("Are you sure you want to deactivate your account?")) {
+                const res = await fetch('http://127.0.0.1:5000/api/users/delete', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: password })
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    alert("Account deactivated.");
+                    window.location.href = '/index.html';
+                } else {
+                    alert("Error: " + data.error);
+                }
+            }
+        });
+
+        loadProfile();
+    </script>
+</body>
+</html>

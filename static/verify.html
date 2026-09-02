@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Work Milestone | NextMarket</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div id="navbar-container"></div>
+
+    <main class="main-container">
+        <div class="form-card">
+            <h2>Milestone Verification Portal</h2>
+            <p style="margin-bottom: 1.5rem; color: #64748b;">Clients can sign off on completed work deliverables using their 32-character hex verification token.</p>
+
+            <div class="form-group">
+                <label for="tokenInput">Verification Hash Token</label>
+                <input type="text" id="tokenInput" placeholder="e.g. a1b2c3d4e5f67890..." required>
+            </div>
+            <button id="verifyBtn" class="btn-submit">Verify Deliverable</button>
+
+            <p id="msg" style="margin-top: 1rem; font-weight: 600; text-align: center;"></p>
+
+            <hr style="margin: 2rem 0 1.5rem 0; border: none; border-top: 1px solid #e2e8f0;">
+
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <h4 style="color: #0f172a; margin-bottom: 0.5rem;">Need to generate a milestone link?</h4>
+                <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Freelancers can issue a new verification link for clients below:</p>
+                <form id="createMilestoneForm">
+                    <div class="form-group">
+                        <input type="text" id="mTitle" placeholder="Milestone Title" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="mClient" placeholder="Client Name">
+                    </div>
+                    <button type="submit" style="background:#0f172a; color:white; border:none; padding:0.6rem 1rem; border-radius:6px; font-weight:600; cursor:pointer; width:100%;">Issue Milestone Token</button>
+                </form>
+                <p id="createdTokenMsg" style="margin-top: 0.75rem; font-size: 0.85rem; word-break: break-all;"></p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-bottom">&copy; 2026 NextMarket Freelance Engine. All rights reserved.</div>
+    </footer>
+
+    <script src="/static/navbar.js"></script>
+    <script>
+        // Check for URL Query Parameter token e.g. /verify.html?token=XXXX
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryToken = urlParams.get('token');
+        if(queryToken) {
+            document.getElementById('tokenInput').value = queryToken;
+        }
+
+        // Verify Token
+        document.getElementById('verifyBtn').addEventListener('click', async () => {
+            const token = document.getElementById('tokenInput').value;
+            if(!token) { alert("Please enter a valid token."); return; }
+
+            const res = await fetch(`http://127.0.0.1:5000/api/milestones/verify/${token}`, { method: 'POST' });
+            const data = await res.json();
+            const msg = document.getElementById('msg');
+
+            if(res.ok) {
+                msg.style.color = '#10b981';
+                msg.innerText = `Verified! Work deliverable confirmed. Total Verified: ${data.total_verified_milestones} (Freelancer Tier: ${data.updated_tier})`;
+            } else {
+                msg.style.color = '#ef4444';
+                msg.innerText = data.error || data.message;
+            }
+        });
+
+        // Issue New Milestone
+        document.getElementById('createMilestoneForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const res = await fetch('http://127.0.0.1:5000/api/milestones/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: document.getElementById('mTitle').value,
+                    client_name: document.getElementById('mClient').value
+                })
+            });
+            const data = await res.json();
+            const msg = document.getElementById('createdTokenMsg');
+            if(res.ok) {
+                msg.style.color = '#10b981';
+                msg.innerHTML = `Token Issued: <strong>${data.verification_token}</strong><br><a href="${data.verification_url}">Direct Client Verification Link</a>`;
+            } else {
+                msg.style.color = '#ef4444';
+                msg.innerText = data.error;
+            }
+        });
+    </script>
+</body>
+</html>

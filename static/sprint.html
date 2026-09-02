@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>14-Day Onboarding Sprint | NextMarket</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div id="navbar-container"></div>
+
+    <main class="main-container">
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <h1>14-Day Freelancer Launchpad</h1>
+            <p>Complete daily tasks to optimize your profile, attract initial clients, and reach Tier 2.</p>
+        </div>
+
+        <div class="grid-3" id="sprintTasks">
+            <div class="card" style="background:white; border:1px solid #e2e8f0; padding:1.5rem; border-radius:8px;">
+                <h3>Day 1: Profile Polish</h3>
+                <p style="margin:0.5rem 0 1rem 0; color:#64748b;">Add a professional bio and valid WhatsApp contact details.</p>
+                <button onclick="completeDay(1)" id="btn-day-1" class="btn-submit">Mark Day 1 Done</button>
+            </div>
+            <div class="card" style="background:white; border:1px solid #e2e8f0; padding:1.5rem; border-radius:8px;">
+                <h3>Day 2: Portfolio Setup</h3>
+                <p style="margin:0.5rem 0 1rem 0; color:#64748b;">Create your first service gig using Tier 1 $0 portfolio builder pricing.</p>
+                <button onclick="completeDay(2)" id="btn-day-2" class="btn-submit">Mark Day 2 Done</button>
+            </div>
+            <div class="card" style="background:white; border:1px solid #e2e8f0; padding:1.5rem; border-radius:8px;">
+                <h3>Day 3: Milestone Outreach</h3>
+                <p style="margin:0.5rem 0 1rem 0; color:#64748b;">Issue milestone verification links to your first client.</p>
+                <button onclick="completeDay(3)" id="btn-day-3" class="btn-submit">Mark Day 3 Done</button>
+            </div>
+        </div>
+        <p id="sprintMsg" style="margin-top: 1.5rem; text-align: center; font-weight: 600;"></p>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-bottom">&copy; 2026 NextMarket Freelance Engine. All rights reserved.</div>
+    </footer>
+
+    <script src="/static/navbar.js"></script>
+    <script>
+        async function loadSprint() {
+            const res = await fetch('http://127.0.0.1:5000/api/sprints/me');
+            if(!res.ok) {
+                document.getElementById('sprintMsg').innerText = "Please log in with a freelancer account to view your sprint progress.";
+                return;
+            }
+            const data = await res.json();
+            
+            if(data.day_1_done) {
+                document.getElementById('btn-day-1').innerText = "✓ Completed";
+                document.getElementById('btn-day-1').style.background = "#10b981";
+            }
+            if(data.day_2_done) {
+                document.getElementById('btn-day-2').innerText = "✓ Completed";
+                document.getElementById('btn-day-2').style.background = "#10b981";
+            }
+            if(data.day_3_done) {
+                document.getElementById('btn-day-3').innerText = "✓ Completed";
+                document.getElementById('btn-day-3').style.background = "#10b981";
+            }
+        }
+
+        async function completeDay(dayNum) {
+            const res = await fetch('http://127.0.0.1:5000/api/sprints/complete-day', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ day: dayNum })
+            });
+            const data = await res.json();
+            if(res.ok) {
+                loadSprint();
+            } else {
+                alert(data.error || "Failed to update sprint.");
+            }
+        }
+
+        loadSprint();
+    </script>
+</body>
+</html>

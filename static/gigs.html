@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Gigs | NextMarket</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div id="navbar-container"></div>
+
+    <main class="main-container">
+        <div class="form-card">
+            <h2>Create New Service Gig</h2>
+            <p style="margin-bottom: 1.5rem; color: #64748b;">Post a service offering. Pricing must strictly respect your current experience Tier Floor.</p>
+
+            <form id="gigForm">
+                <div class="form-group">
+                    <label for="gigTitle">Service Title</label>
+                    <input type="text" id="gigTitle" placeholder="e.g. Full-Stack Python Flask Web App Development" required>
+                </div>
+                <div class="form-group">
+                    <label for="gigPrice">Proposed Price ($ USD)</label>
+                    <input type="number" step="0.01" id="gigPrice" placeholder="25.00" required>
+                </div>
+                <button type="submit" class="btn-submit">Publish Gig</button>
+            </form>
+
+            <p id="msg" style="margin-top: 1rem; font-weight: 600; text-align: center;"></p>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-bottom">&copy; 2026 NextMarket Freelance Engine. All rights reserved.</div>
+    </footer>
+
+    <script src="/static/navbar.js"></script>
+    <script>
+        document.getElementById('gigForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const price = document.getElementById('gigPrice').value;
+
+            const res = await fetch('http://127.0.0.1:5000/api/gigs/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ price: price })
+            });
+
+            const data = await res.json();
+            const msg = document.getElementById('msg');
+
+            if(res.ok) {
+                msg.style.color = '#10b981';
+                msg.innerText = `${data.message} (Tier ${data.tier} Rate: $${data.price})`;
+            } else {
+                msg.style.color = '#ef4444';
+                msg.innerText = `Rejected: ${data.message}`;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+:root {
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+    --success-color: #10b981;
+    --dark-bg: #0f172a;
+    --light-bg: #f8fafc;
+    --text-main: #334155;
+    --border-color: #e2e8f0;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+body { background-color: var(--light-bg); color: var(--text-main); line-height: 1.6; display: flex; flex-direction: column; min-height: 100vh; }
+
+/* Fixed & Standardized Navbar Header */
+.navbar { background: white; border-bottom: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05); height: 70px; display: flex; align-items: center; }
+.nav-container { max-width: 1100px; width: 100%; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 0 1.5rem; }
+.logo { font-size: 1.5rem; font-weight: 700; color: var(--primary-color); text-decoration: none; }
+.nav-links { display: flex; list-style: none; gap: 1.5rem; align-items: center; margin: 0; padding: 0; }
+.nav-links a, .nav-links button { text-decoration: none; color: var(--text-main); font-weight: 500; font-size: 0.95rem; transition: color 0.2s; background: none; border: none; cursor: pointer; }
+.nav-links a:hover, .nav-links button:hover { color: var(--primary-color); }
+.btn-nav { background: var(--primary-color) !important; color: white !important; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600 !important; }
+.btn-nav:hover { background: var(--primary-hover) !important; }
+
+/* User Profile Avatar Icon Badge */
+.profile-badge { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--text-main); font-weight: 600; padding: 0.25rem 0.5rem; border-radius: 20px; border: 1px solid var(--border-color); background: #f1f5f9; }
+.profile-avatar { width: 32px; height: 32px; background-color: var(--primary-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; }
+
+/* Layouts & Containers */
+.main-container { max-width: 1100px; margin: 2rem auto; padding: 0 1.5rem; flex: 1; width: 100%; }
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+
+/* Form Card Styling */
+.form-card { max-width: 500px; margin: 2rem auto; background: white; padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); }
+.form-group { margin-bottom: 1.25rem; }
+.form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; }
+.form-group input, .form-group select { width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; font-size: 1rem; }
+.btn-submit { width: 100%; background: var(--primary-color); color: white; border: none; padding: 0.75rem; font-size: 1rem; font-weight: 600; border-radius: 6px; cursor: pointer; }
+.btn-submit:hover { background: var(--primary-hover); }
+.wa-btn { display: inline-flex; align-items: center; justify-content: center; background: var(--success-color); color: white; padding: 0.6rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 600; margin-top: 1rem; width: 100%; }
+
+/* Footer */
+.footer { background: var(--dark-bg); color: #94a3b8; margin-top: auto; padding: 2rem 0 1rem 0; }
+.footer-bottom { max-width: 1100px; margin: 0 auto; text-align: center; font-size: 0.875rem; }
