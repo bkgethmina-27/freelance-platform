@@ -13,8 +13,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   container.innerHTML = `
-    <header style="background: #ffffff; border-bottom: 1px solid #e2e8f0; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; width: 100%;">
-      <div style="font-size: 1.5rem; font-weight: 800; color: #1e40af;">
+    <header style="background: #ffffff; border-bottom: 1px solid #e2e8f0; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
+      <div style="font-size: 1.5rem; font-weight: 800;">
         <a href="/index.html" style="text-decoration: none; color: #1e40af;">NextMarket</a>
       </div>
       <nav style="display: flex; align-items: center; gap: 1.5rem;">
