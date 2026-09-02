@@ -2,6 +2,7 @@ import secrets
 from flask import Flask, request, jsonify, send_from_directory, session
 from flask_cors import CORS
 import mysql.connector
+import os
 
 # Tier Minimum Pricing Thresholds
 TIER_MINIMUM_PRICES = {
@@ -23,7 +24,24 @@ db_config = {
 }
 
 def get_db_connection():
-    return mysql.connector.connect(**db_config)
+    # Fetch environment variables with production defaults
+    host = os.getenv('DB_HOST', 'localhost')
+    user = os.getenv('DB_USER', 'root')
+    password = os.getenv('DB_PASSWORD', '')
+    database = os.getenv('DB_NAME', 'freelance_db')
+    port = int(os.getenv('DB_PORT', 3306))
+
+    # Aiven requires SSL mode when running in the cloud
+    ssl_disabled = True if host == 'localhost' else False
+
+    return mysql.connector.connect(
+        host=host,
+        user=user,
+        password=password,
+        database=database,
+        port=port,
+        ssl_disabled=ssl_disabled
+    )
 
 @app.route('/', methods=['GET'])
 def home():
