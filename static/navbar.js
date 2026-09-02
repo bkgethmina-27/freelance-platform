@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       <nav style="display: flex; align-items: center; gap: 1.5rem;">
         <a href="/index.html" style="text-decoration: none; color: #475569; font-weight: 600; font-size: 0.95rem;">Marketplace</a>
         ${user ? `
+          <a href="/gigs.html" style="text-decoration: none; color: #475569; font-weight: 600; font-size: 0.95rem;">Post a Gig</a>
           <a href="/sprint.html" style="text-decoration: none; color: #475569; font-weight: 600; font-size: 0.95rem;">Progress Tracker</a>
           <a href="/verify.html" style="text-decoration: none; color: #475569; font-weight: 600; font-size: 0.95rem;">Milestones</a>
           <a href="/profile.html" style="text-decoration: none; color: #475569; font-weight: 600; font-size: 0.95rem;">Profile (${user.full_name.split(' ')[0]})</a>

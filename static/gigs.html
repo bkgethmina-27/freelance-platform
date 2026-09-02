@@ -39,12 +39,13 @@
     <script>
         document.getElementById('gigForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const title = document.getElementById('gigTitle').value;
             const price = document.getElementById('gigPrice').value;
 
             const res = await fetch('/api/gigs/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ price: price })
+                body: JSON.stringify({ title: title, price: price })
             });
 
             const data = await res.json();

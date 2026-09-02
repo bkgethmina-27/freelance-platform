@@ -91,6 +91,18 @@ def ensure_db_initialized():
             );
             """)
 
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS gigs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                freelancer_id INT NOT NULL,
+                title VARCHAR(255),
+                price DECIMAL(10,2) NOT NULL,
+                tier INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (freelancer_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            """)
+
             conn.commit()
             cursor.close()
             conn.close()
@@ -177,7 +189,7 @@ def get_current_user():
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, full_name, email, whatsapp_number, bio, current_tier FROM users WHERE id = %s AND is_active = TRUE", (user_id,))
+        cursor.execute("SELECT id, full_name, email, role, whatsapp_number, bio, current_tier FROM users WHERE id = %s AND is_active = TRUE", (user_id,))
         user = cursor.fetchone()
         cursor.close()
         conn.close()
@@ -251,6 +263,203 @@ def get_automated_sprint_status():
             "day_1": {"title": "Complete Profile & WhatsApp Number", "completed": day_1_done},
             "day_2": {"title": "Create First Work Milestone", "completed": day_2_done},
             "day_3": {"title": "Receive First Verified Review", "completed": day_3_done}
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/gigs/create', methods=['POST'])
+def create_gig():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.json
+    title = data.get('title', 'Untitled Gig')
+    price = data.get('price')
+
+    try:
+        price = float(price)
+    except (TypeError, ValueError):
+        return jsonify({"message": "Price must be a valid number."}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT current_tier FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        if not user:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "User not found"}), 404
+
+        tier = user['current_tier']
+        minimum_price = TIER_MINIMUM_PRICES.get(tier, 0.00)
+
+        if price < minimum_price:
+            cursor.close()
+            conn.close()
+            return jsonify({"message": f"Price must be at least ${minimum_price:.2f} for your current Tier {tier}."}), 400
+
+        cursor.execute(
+            "INSERT INTO gigs (freelancer_id, title, price, tier) VALUES (%s, %s, %s, %s)",
+            (user_id, title, price, tier)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({"message": "Gig published successfully!", "tier": tier, "price": price}), 201
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+@app.route('/api/users/update', methods=['PUT'])
+def update_user():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.json
+    password = data.get('password')
+    full_name = data.get('full_name')
+    whatsapp_number = data.get('whatsapp_number')
+    bio = data.get('bio')
+
+    if not password:
+        return jsonify({"error": "Password confirmation is required."}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT password_hash FROM users WHERE id = %s AND is_active = TRUE", (user_id,))
+        user = cursor.fetchone()
+
+        if not user or user['password_hash'] != password:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Incorrect password."}), 401
+
+        cursor.execute(
+            "UPDATE users SET full_name = %s, whatsapp_number = %s, bio = %s WHERE id = %s",
+            (full_name, whatsapp_number, bio, user_id)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({"message": "Profile updated successfully!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/users/delete', methods=['DELETE'])
+def delete_user():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.json
+    password = data.get('password')
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT password_hash FROM users WHERE id = %s AND is_active = TRUE", (user_id,))
+        user = cursor.fetchone()
+
+        if not user or user['password_hash'] != password:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Incorrect password."}), 401
+
+        cursor.execute("UPDATE users SET is_active = FALSE WHERE id = %s", (user_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        session.clear()
+
+        return jsonify({"message": "Account deactivated."}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/milestones/create', methods=['POST'])
+def create_milestone():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.json
+    title = data.get('title')
+    client_name = data.get('client_name', '')
+
+    if not title:
+        return jsonify({"error": "Milestone title is required."}), 400
+
+    token = secrets.token_hex(16)
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO milestones (freelancer_id, title, verification_token, client_name) VALUES (%s, %s, %s, %s)",
+            (user_id, title, token, client_name)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        verification_url = f"{request.host_url.rstrip('/')}/verify.html?token={token}"
+        return jsonify({"message": "Milestone token issued.", "verification_token": token, "verification_url": verification_url}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/milestones/verify/<token>', methods=['POST'])
+def verify_milestone(token):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT * FROM milestones WHERE verification_token = %s", (token,))
+        milestone = cursor.fetchone()
+
+        if not milestone:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Invalid verification token."}), 404
+
+        if milestone['status'] == 'verified':
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "This milestone has already been verified."}), 400
+
+        cursor.execute("UPDATE milestones SET status = 'verified' WHERE id = %s", (milestone['id'],))
+        conn.commit()
+
+        freelancer_id = milestone['freelancer_id']
+        cursor.execute(
+            "SELECT COUNT(*) as count FROM milestones WHERE freelancer_id = %s AND status = 'verified'",
+            (freelancer_id,)
+        )
+        total_verified = cursor.fetchone()['count']
+
+        if total_verified >= 6:
+            new_tier = 3
+        elif total_verified >= 3:
+            new_tier = 2
+        else:
+            new_tier = 1
+
+        cursor.execute("UPDATE users SET current_tier = %s WHERE id = %s", (new_tier, freelancer_id))
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "message": "Milestone verified.",
+            "total_verified_milestones": total_verified,
+            "updated_tier": new_tier
         }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
