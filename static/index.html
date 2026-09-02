@@ -1,63 +1,77 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marketplace | NextMarket</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marketplace | NextMarket</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    body { background-color: #f8fafc; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    .container { max-width: 1000px; margin: 2.5rem auto; padding: 0 1rem; }
+    .hero { text-align: center; margin-bottom: 2.5rem; }
+    .hero h1 { font-size: 2.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem; }
+    .hero p { color: #64748b; font-size: 1.1rem; }
+    .freelancer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
+    .freelancer-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02); display: flex; flex-direction: column; justify-content: space-between; }
+    .tier-badge { padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; background: #e0e7ff; color: #3730a3; }
+    .btn-whatsapp { display: block; width: 100%; padding: 0.75rem; background-color: #10b981; color: #ffffff !important; text-align: center; text-decoration: none; font-weight: 700; border-radius: 0.375rem; margin-top: 1rem; box-sizing: border-box; border: none; cursor: pointer; }
+    .btn-whatsapp:hover { background-color: #059669; }
+  </style>
 </head>
 <body>
+  <div id="navbar-container"></div>
 
-    <div id="navbar-container"></div>
+  <div class="container">
+    <div class="hero">
+      <h1>Discover Vetted Freelance Talent</h1>
+      <p>Connect directly with top professionals across structured experience tiers.</p>
+    </div>
 
-    <main class="main-container">
-        <div style="text-align: center; margin-bottom: 2.5rem;">
-            <h1>Discover Vetted Freelance Talent</h1>
-            <p>Connect directly with top professionals across structured experience tiers.</p>
-        </div>
+    <div id="freelancer-grid" class="freelancer-grid">
+      <p style="text-align: center; color: #64748b; grid-column: 1/-1;">Loading freelancers...</p>
+    </div>
+  </div>
 
-        <div id="freelancerList" class="grid-3">
-            <p>Loading active freelancers...</p>
-        </div>
-    </main>
+  <footer style="text-align: center; padding: 2rem; color: #64748b; font-size: 0.875rem; margin-top: 4rem;">
+    © 2026 NextMarket Freelance Engine. All rights reserved.
+  </footer>
 
-    <footer class="footer">
-        <div class="footer-bottom">&copy; 2026 NextMarket Freelance Engine. All rights reserved.</div>
-    </footer>
+  <script src="/static/navbar.js"></script>
+  <script>
+    async function loadFreelancers() {
+      const grid = document.getElementById('freelancer-grid');
+      try {
+        const res = await fetch('/api/freelancers');
+        const freelancers = await res.json();
 
-    <script src="/static/navbar.js"></script>
-    <script>
-        async function loadFreelancers() {
-            try {
-                const res = await fetch('/api/freelancers');
-                const freelancers = await res.json();
-                
-                const listDiv = document.getElementById('freelancerList');
-                listDiv.innerHTML = '';
-
-                if(freelancers.length === 0) {
-                    listDiv.innerHTML = '<p>No freelancers registered yet.</p>';
-                    return;
-                }
-
-                freelancers.forEach(f => {
-                    listDiv.innerHTML += `
-                        <div class="card" style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:1.5rem;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-                                <h3>${f.full_name}</h3>
-                                <span class="badge" style="background:#e0e7ff; color:#3730a3; padding:0.25rem 0.5rem; border-radius:12px; font-weight:700; font-size:0.75rem;">Tier ${f.current_tier}</span>
-                            </div>
-                            <p>${f.bio || 'Professional service provider.'}</p>
-                            <p style="margin-top:0.5rem;"><strong>Rating:</strong> ${f.average_rating} / 5.0</p>
-                            ${f.whatsapp_link ? `<a href="${f.whatsapp_link}" target="_blank" class="wa-btn">Contact on WhatsApp</a>` : ''}
-                        </div>
-                    `;
-                });
-            } catch(e) {
-                document.getElementById('freelancerList').innerHTML = '<p>Unable to connect to backend server.</p>';
-            }
+        if (!res.ok || freelancers.length === 0) {
+          grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #64748b;">No freelancers currently active.</p>';
+          return;
         }
-        loadFreelancers();
-    </script>
+
+        grid.innerHTML = freelancers.map(f => `
+          <div class="freelancer-card">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <h3 style="margin: 0; font-size: 1.125rem; color: #0f172a;">${f.full_name}</h3>
+                <span class="tier-badge">Tier ${f.current_tier}</span>
+              </div>
+              <p style="color: #64748b; font-size: 0.9rem; margin: 0 0 1rem 0;">${f.bio || 'Professional service provider.'}</p>
+              <p style="font-size: 0.875rem; color: #334155; margin: 0;"><strong>Rating:</strong> ${f.average_rating} / 5.0</p>
+            </div>
+            ${f.whatsapp_link ? `
+              <a href="${f.whatsapp_link}" target="_blank" class="btn-whatsapp">Contact on WhatsApp</a>
+            ` : `
+              <button disabled style="width: 100%; padding: 0.75rem; background: #e2e8f0; color: #94a3b8; border: none; border-radius: 0.375rem; margin-top: 1rem; cursor: not-allowed;">No WhatsApp Provided</button>
+            `}
+          </div>
+        `).join('');
+      } catch (err) {
+        grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #ef4444;">Failed to load freelancers.</p>';
+      }
+    }
+
+    loadFreelancers();
+  </script>
 </body>
 </html>
