@@ -24,7 +24,6 @@ def get_db_connection():
     database = os.getenv('DB_NAME', 'freelance_db')
     port = int(os.getenv('DB_PORT', 3306))
 
-    # Local XAMPP vs Cloud Aiven Connection
     if host in ['localhost', '127.0.0.1']:
         return mysql.connector.connect(
             host=host,
@@ -40,7 +39,7 @@ def get_db_connection():
             password=password,
             database=database,
             port=port,
-            ssl_mode='REQUIRED'
+            ssl_disabled=False
         )
 
 @app.before_request
