@@ -41,7 +41,7 @@
             e.preventDefault();
             const price = document.getElementById('gigPrice').value;
 
-            const res = await fetch('http://127.0.0.1:5000/api/gigs/create', {
+            const res = await fetch('/api/gigs/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ price: price })

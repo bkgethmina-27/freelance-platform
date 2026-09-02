@@ -4,7 +4,7 @@ async function renderNavbar() {
 
     let user = null;
     try {
-        const res = await fetch('http://127.0.0.1:5000/api/auth/me');
+        const res = await fetch('/api/auth/me');
         if (res.ok) {
             user = await res.json();
         }
@@ -56,7 +56,7 @@ async function renderNavbar() {
     const logoutBtn = document.getElementById('navLogoutBtn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
-            await fetch('http://127.0.0.1:5000/api/auth/logout', { method: 'POST' });
+            await fetch('/api/auth/logout', { method: 'POST' });
             window.location.href = '/login.html';
         });
     }

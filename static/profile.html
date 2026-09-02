@@ -57,7 +57,7 @@
     <script src="/static/navbar.js"></script>
     <script>
         async function loadProfile() {
-            const res = await fetch('http://127.0.0.1:5000/api/auth/me');
+            const res = await fetch('/api/auth/me');
             if(!res.ok) {
                 window.location.href = '/login.html';
                 return;
@@ -73,7 +73,7 @@
             e.preventDefault();
             const password = document.getElementById('updatePassword').value;
             
-            const res = await fetch('http://127.0.0.1:5000/api/users/update', {
+            const res = await fetch('/api/users/update', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -100,7 +100,7 @@
             if(!password) { alert("Please enter your password to deactivate your account."); return; }
 
             if(confirm("Are you sure you want to deactivate your account?")) {
-                const res = await fetch('http://127.0.0.1:5000/api/users/delete', {
+                const res = await fetch('/api/users/delete', {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password: password })

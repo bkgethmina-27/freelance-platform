@@ -43,7 +43,7 @@
     <script src="/static/navbar.js"></script>
     <script>
         async function loadSprint() {
-            const res = await fetch('http://127.0.0.1:5000/api/sprints/me');
+            const res = await fetch('/api/sprints/me');
             if(!res.ok) {
                 document.getElementById('sprintMsg').innerText = "Please log in with a freelancer account to view your sprint progress.";
                 return;
@@ -65,7 +65,7 @@
         }
 
         async function completeDay(dayNum) {
-            const res = await fetch('http://127.0.0.1:5000/api/sprints/complete-day', {
+            const res = await fetch('/api/sprints/complete-day', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ day: dayNum })

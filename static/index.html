@@ -29,7 +29,7 @@
     <script>
         async function loadFreelancers() {
             try {
-                const res = await fetch('http://127.0.0.1:5000/api/freelancers');
+                const res = await fetch('/api/freelancers');
                 const freelancers = await res.json();
                 
                 const listDiv = document.getElementById('freelancerList');

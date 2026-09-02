@@ -60,7 +60,7 @@
             const token = document.getElementById('tokenInput').value;
             if(!token) { alert("Please enter a valid token."); return; }
 
-            const res = await fetch(`http://127.0.0.1:5000/api/milestones/verify/${token}`, { method: 'POST' });
+            const res = await fetch(`/api/milestones/verify/${token}`, { method: 'POST' });
             const data = await res.json();
             const msg = document.getElementById('msg');
 
@@ -76,7 +76,7 @@
         // Issue New Milestone
         document.getElementById('createMilestoneForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const res = await fetch('http://127.0.0.1:5000/api/milestones/create', {
+            const res = await fetch('/api/milestones/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
