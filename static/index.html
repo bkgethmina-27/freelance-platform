@@ -27,6 +27,12 @@
       <p>Connect directly with top professionals across structured experience tiers.</p>
     </div>
 
+    <div style="max-width: 320px; margin: 0 auto 1.5rem auto;">
+      <select id="categoryFilter" style="width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #cbd5e1; border-radius: 0.375rem; font-size: 0.9rem; box-sizing: border-box; background: #fff;">
+        <option value="">All Categories</option>
+      </select>
+    </div>
+
     <div id="freelancer-grid" class="freelancer-grid">
       <p style="text-align: center; color: #64748b; grid-column: 1/-1;">Loading freelancers...</p>
     </div>
@@ -38,10 +44,23 @@
 
   <script src="/static/navbar.js"></script>
   <script>
-    async function loadFreelancers() {
-      const grid = document.getElementById('freelancer-grid');
+    async function loadCategoryFilter() {
+      const select = document.getElementById('categoryFilter');
       try {
-        const res = await fetch('/api/freelancers');
+        const res = await fetch('/api/categories');
+        const categories = await res.json();
+        select.innerHTML = '<option value="">All Categories</option>' +
+          categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      } catch (err) {}
+      select.addEventListener('change', () => loadFreelancers(select.value));
+    }
+
+    async function loadFreelancers(categoryId) {
+      const grid = document.getElementById('freelancer-grid');
+      grid.innerHTML = '<p style="text-align: center; color: #64748b; grid-column: 1/-1;">Loading freelancers...</p>';
+      try {
+        const url = categoryId ? `/api/freelancers?category_id=${categoryId}` : '/api/freelancers';
+        const res = await fetch(url);
         const freelancers = await res.json();
 
         if (!res.ok || freelancers.length === 0) {
@@ -56,6 +75,7 @@
                 <h3 style="margin: 0; font-size: 1.125rem; color: #0f172a;">${f.full_name}</h3>
                 <span class="tier-badge">Tier ${f.current_tier}</span>
               </div>
+              ${f.category_name ? `<p style="margin: 0 0 0.5rem 0;"><span style="font-size: 0.75rem; font-weight: 600; color: #059669; background: #ecfdf5; padding: 0.2rem 0.5rem; border-radius: 9999px;">${f.category_name}</span></p>` : ''}
               <p style="color: #64748b; font-size: 0.9rem; margin: 0 0 1rem 0;">${f.bio || 'Professional service provider.'}</p>
               <p style="font-size: 0.875rem; color: #334155; margin: 0;"><strong>Rating:</strong> ${f.average_rating} / 5.0</p>
             </div>
@@ -71,6 +91,7 @@
       }
     }
 
+    loadCategoryFilter();
     loadFreelancers();
   </script>
 </body>
