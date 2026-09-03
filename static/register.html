@@ -36,12 +36,8 @@
         <input type="text" id="whatsapp_number" placeholder="+1234567890" style="width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #cbd5e1; border-radius: 0.375rem; font-size: 0.95rem; box-sizing: border-box;">
       </div>
 
-      <div style="margin-bottom: 1.5rem;">
-        <label style="display: block; font-weight: 600; margin-bottom: 0.375rem; font-size: 0.875rem; color: #334155;">Primary Category</label>
-        <select id="category_id" required style="width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #cbd5e1; border-radius: 0.375rem; font-size: 0.95rem; box-sizing: border-box; background: #fff;">
-          <option value="">Loading categories...</option>
-        </select>
-        <p style="margin: 0.375rem 0 0 0; font-size: 0.8rem; color: #94a3b8;">This decides your minimum gig price and which beginner pool you join. Categories marked "Full" have reached their beginner capacity — pick another if yours is full.</p>
+      <div style="margin-bottom: 1.5rem; padding: 0.875rem 1rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 0.375rem;">
+        <p style="margin: 0; font-size: 0.85rem; color: #1e40af;">One account, two hats: you can browse and hire as a client, or post gigs as a freelancer, and switch between them anytime after logging in.</p>
       </div>
 
       <button type="submit" style="width: 100%; padding: 0.75rem; background-color: #2563eb; color: #ffffff; border: none; border-radius: 0.375rem; font-weight: 700; font-size: 1rem; cursor: pointer;">Create Account</button>
@@ -54,22 +50,6 @@
 
   <script src="/static/navbar.js"></script>
   <script>
-    (async () => {
-      const select = document.getElementById('category_id');
-      try {
-        const res = await fetch('/api/categories');
-        const categories = await res.json();
-        select.innerHTML = '<option value="">Select a category</option>' + categories.map(c => {
-          const label = c.tier1_full
-            ? `${c.name} — Full (${c.tier1_count}/${c.tier1_cap} beginners)`
-            : `${c.name} (${c.tier1_count}/${c.tier1_cap} beginners)`;
-          return `<option value="${c.id}" ${c.tier1_full ? 'disabled' : ''}>${label}</option>`;
-        }).join('');
-      } catch (err) {
-        select.innerHTML = '<option value="">Could not load categories</option>';
-      }
-    })();
-
     document.getElementById('register-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const errorAlert = document.getElementById('error-alert');
@@ -79,8 +59,7 @@
         full_name: document.getElementById('full_name').value,
         email: document.getElementById('email').value,
         password: document.getElementById('password').value,
-        whatsapp_number: document.getElementById('whatsapp_number').value,
-        category_id: document.getElementById('category_id').value
+        whatsapp_number: document.getElementById('whatsapp_number').value
       };
 
       const res = await fetch('/api/auth/register', {

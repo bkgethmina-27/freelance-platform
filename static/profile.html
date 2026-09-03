@@ -63,7 +63,9 @@
                 return;
             }
             const user = await res.json();
-            document.getElementById('userWelcome').innerText = `Logged in as ${user.email} (${user.role.toUpperCase()})`;
+            document.getElementById('userWelcome').innerText = user.is_freelancer
+                ? `Logged in as ${user.email} — Freelancer, Tier ${user.current_tier}`
+                : `Logged in as ${user.email} — not yet a freelancer (post a gig to activate)`;
             document.getElementById('full_name').value = user.full_name || '';
             document.getElementById('whatsapp_number').value = user.whatsapp_number || '';
             document.getElementById('bio').value = user.bio || '';

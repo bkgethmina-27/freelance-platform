@@ -13,7 +13,7 @@
     <main class="main-container">
         <div class="form-card">
             <h2>Create New Service Gig</h2>
-            <p style="margin-bottom: 1.5rem; color: #64748b;">Post a service offering. Pricing must strictly respect your current experience Tier Floor.</p>
+            <p style="margin-bottom: 1.5rem; color: #64748b;">Post a service offering. Pricing must strictly respect your current experience Tier Floor. Posting your first gig activates your freelancer profile.</p>
 
             <form id="gigForm">
                 <div class="form-group">
@@ -97,6 +97,10 @@
             if(res.ok) {
                 msg.style.color = '#10b981';
                 msg.innerText = `${data.message} (Tier ${data.tier} Rate: $${data.price})`;
+                document.getElementById('gigForm').reset();
+                if (data.became_freelancer) {
+                    localStorage.setItem('nm_mode', 'freelancer');
+                }
             } else {
                 msg.style.color = '#ef4444';
                 msg.innerText = `Rejected: ${data.message}`;
